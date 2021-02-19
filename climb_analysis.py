@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import scipy.interpolate as interpolate
 from skaero.atmosphere import coesa
-from labellines import labelLine, labelLines
 
 class climb_analysis:
     def __init__(self, altitudes):
@@ -47,7 +46,6 @@ class climb_analysis:
             [0.5 * rho * np.power(self.velocity[i][j], 2) * self.area * self.drag_coeff[j] for j in range(len(self.velocity[i]))] for i, rho in enumerate(self.density)
         ])
 
-    def max_roc(self, metric):
         # finding power required
         self.power_required = self.drag * self.velocity
         
@@ -68,57 +66,77 @@ class climb_analysis:
         # find rate of climb
         self.climb_rate = (self.power_available - self.power_required) / self.weight
 
+    def max_roc(self, metric, mode):
         # find maximum rate of climb
         self.climb_rate_max = np.array([np.max(alt) for alt in self.climb_rate])
         self.climb_rate_max_x = np.array([self.velocity[i][np.argmax(self.climb_rate[i])] for i in range(len(self.velocity))])
 
-        if metric:
-            plt.figure(dpi=230, figsize=(7,4))
-            plt.style.use(['science', 'no-latex'])
+        if mode == 'plot':
+            if metric:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
 
-            self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x, self.climb_rate_max)
-            self.interp_x = np.linspace(np.min(self.climb_rate_max_x), np.max(self.climb_rate_max_x))
+                self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x, self.climb_rate_max)
+                self.interp_x = np.linspace(np.min(self.climb_rate_max_x), np.max(self.climb_rate_max_x))
 
-            plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')          
+                plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')          
 
-            for i in range(len(self.altitudes) + 1):
-                if i == 0:
-                    plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='Sea Level')
-                else:
-                    plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='{0} ft'.format(self.altitudes[i-1]))
+                for i in range(len(self.altitudes) + 1):
+                    if i == 0:
+                        plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='Sea Level')
+                    else:
+                        plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='{0} ft'.format(self.altitudes[i-1]))
 
-            plt.xlabel('Equivalent Velocity [m/s]')
-            plt.ylabel('Maximum Rate of Climb [m/s]')
-            plt.legend()
+                plt.xlabel('Equivalent Velocity [m/s]')
+                plt.ylabel('Maximum Rate of Climb [m/s]')
+                plt.legend()
 
-            plt.show()
+                plt.show()
 
-            print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
+                print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
 
-        else:
-            plt.figure(dpi=230, figsize=(7,4))
-            plt.style.use(['science', 'no-latex'])
+            else:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
 
-            self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384)
-            self.interp_x = np.linspace(np.min(self.climb_rate_max_x*1.94384), np.max(self.climb_rate_max_x*1.94384))
+                self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384)
+                self.interp_x = np.linspace(np.min(self.climb_rate_max_x*1.94384), np.max(self.climb_rate_max_x*1.94384))
 
-            plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')
+                plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')
 
-            for i in range(len(self.altitudes) + 1):
-                if i == 0:
-                    plt.scatter(self.climb_rate_max_x[i]*1.94384, self.climb_rate_max[i]*1.94384, label='Sea Level')
-                else:
-                    plt.scatter(self.climb_rate_max_x[i]*1.94384, self.climb_rate_max[i]*1.94384, label='{0} ft'.format(self.altitudes[i-1]))
+                for i in range(len(self.altitudes) + 1):
+                    if i == 0:
+                        plt.scatter(self.climb_rate_max_x[i]*1.94384, self.climb_rate_max[i]*1.94384, label='Sea Level')
+                    else:
+                        plt.scatter(self.climb_rate_max_x[i]*1.94384, self.climb_rate_max[i]*1.94384, label='{0} ft'.format(self.altitudes[i-1]))
 
-            plt.xlabel('Equivalent Velocity [kts]')
-            plt.ylabel('Maximum Rate of Climb [kts]')
-            plt.legend()
+                plt.xlabel('Equivalent Velocity [kts]')
+                plt.ylabel('Maximum Rate of Climb [kts]')
+                plt.legend()
 
-            plt.show()
+                plt.show()
 
-            print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
+                print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
+
+        elif mode == 'data':
+            self.alts = [0]
+            self.alts.extend(self.altitudes)
+            self.alts = np.array(self.alts)
+
+            if metric:
+                self.max_roc_data = pd.DataFrame(
+                    data = np.array([self.alts*0.3048, self.climb_rate_max_x, self.climb_rate_max]).T,
+                    columns = ['Altitude [m]', 'Equivalent Velocity [m/s]', 'Maximum Rate of Climb [m/s]']
+                )
+            else:
+                self.max_roc_data = pd.DataFrame(
+                    data = np.array([self.alts, self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384]).T,
+                    columns = ['Altitude [ft]', 'Equivalent Velocity [kts]', 'Maximum Rate of Climb [kts]']
+                )
+
+            print(self.max_roc_data)
         
-    def hodograph(self, metric):
+    def hodograph(self, metric, mode):
         # find horizontal velocity
         self.gamma = self.climb_rate / self.velocity
         self.velocity_hor = self.velocity * np.cos(self.gamma)
@@ -127,19 +145,84 @@ class climb_analysis:
         self.climb_rate_pos = [[climb_rate for climb_rate in alt if climb_rate > 0] for alt in self.climb_rate]
         self.velocity_hor_pos = [self.velocity_hor[i][0:len(self.climb_rate_pos[i])] for i in range(len(self.climb_rate_pos))]
 
+        if mode == 'plot':
+            if metric:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                for i in range(len(self.altitudes) + 1):
+                    if i == 0:
+                        plt.plot(self.velocity_hor_pos[i], self.climb_rate_pos[i], label='Sea Level')
+                    else:
+                        plt.plot(self.velocity_hor_pos[i], self.climb_rate_pos[i], label='{0} ft'.format(self.altitudes[i-1]))
+
+                plt.xlabel('Equivalent Horizontal Velocity [m/s]')
+                plt.ylabel('Maximum Rate of Climb [m/s]')
+                plt.legend()
+
+                plt.show()
+
+            else:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                for i in range(len(self.altitudes) + 1):
+                    if i == 0:
+                        plt.plot(np.array(self.velocity_hor_pos[i])*1.94384, np.array(self.climb_rate_pos[i])*1.94384, label='Sea Level')
+                    else:
+                        plt.plot(np.array(self.velocity_hor_pos[i])*1.94384, np.array(self.climb_rate_pos[i])*1.94384, label='{0} ft'.format(self.altitudes[i-1]))
+
+                plt.xlabel('Equivalent Horizontal Velocity [kts]')
+                plt.ylabel('Rate of Climb [kts]')
+                plt.legend()
+
+                plt.show()
+        
+        elif mode == 'data':
+            self.alts = [0]
+            self.alts.extend(self.altitudes)
+            self.alts = np.array(self.alts)
+
+            if metric:
+                cols = ['True Velocity [kts]']
+                cols.extend(['{0} [m]'.format(alt*0.3048) for alt in self.alts])
+
+                dat = [np.flip(self.velocity[0])]
+                dat.extend([np.flip(roc) for roc in self.climb_rate])
+
+                self.hodo = pd.DataFrame(
+                    data = np.array(dat).T,
+                    columns = cols
+                )
+
+            else:
+                cols = ['True Velocity [kts]']
+                cols.extend(['{0} [ft]'.format(alt) for alt in self.alts])
+
+                dat = [np.flip(self.velocity[0])*1.94384]
+                dat.extend([np.flip(roc)*1.94384 for roc in self.climb_rate])
+
+                self.hodo = pd.DataFrame(
+                    data = np.array(dat).T,
+                    columns = cols
+                )
+
+            pd.set_option("display.max_rows", None, "display.max_columns", None)
+            print(self.hodo)
+
+    def ceilings(self, metric):
+        self.alts = [0]
+        self.alts.extend(self.altitudes)
+        self.alts = np.array(self.alts)
+
         if metric:
             plt.figure(dpi=230, figsize=(7,4))
             plt.style.use(['science', 'no-latex'])
 
-            for i in range(len(self.altitudes) + 1):
-                if i == 0:
-                    plt.plot(self.velocity_hor_pos[i], self.climb_rate_pos[i], label='Sea Level')
-                else:
-                    plt.plot(self.velocity_hor_pos[i], self.climb_rate_pos[i], label='{0} ft'.format(self.altitudes[i-1]))
+            plt.scatter(self.alts*0.3048, self.climb_rate_max)
 
-            plt.xlabel('Equivalent Horizontal Velocity [m/s]')
+            plt.xlabel('Altitude [m]')
             plt.ylabel('Maximum Rate of Climb [m/s]')
-            plt.legend()
 
             plt.show()
 
@@ -147,14 +230,9 @@ class climb_analysis:
             plt.figure(dpi=230, figsize=(7,4))
             plt.style.use(['science', 'no-latex'])
 
-            for i in range(len(self.altitudes) + 1):
-                if i == 0:
-                    plt.plot(np.array(self.velocity_hor_pos[i])*1.94384, np.array(self.climb_rate_pos[i])*1.94384, label='Sea Level')
-                else:
-                    plt.plot(np.array(self.velocity_hor_pos[i])*1.94384, np.array(self.climb_rate_pos[i])*1.94384, label='{0} ft'.format(self.altitudes[i-1]))
+            plt.scatter(self.alts, np.array(self.climb_rate_max)*1.94384)
 
-            plt.xlabel('Horizontal Horizontal Velocity [kts]')
-            plt.ylabel('Rate of Climb [kts]')
-            plt.legend()
+            plt.xlabel('Altitude [ft]')
+            plt.ylabel('Maximum Rate of Climb [kts]')
 
             plt.show()
