@@ -28,13 +28,17 @@ class climb_analysis:
         self.sigmas = np.array([rho / self.density_SL for rho in self.density])
 
         # finding lift and velocity ranges
-        self.lift_coeff_min = (2 * self.weight) / (self.density_SL * self.area * np.power(self.max_velocity, 2))
+        #self.lift_coeff_min = (2 * self.weight) / (self.density_SL * self.area * np.power(self.max_velocity, 2))
+        
+        self.lift_coeff_min = 0.2
         self.lift_coeff = np.linspace(self.lift_coeff_min, self.lift_coeff_max, 100)
 
-        self.stall_velocity = np.sqrt((2 * self.weight) / (self.density_SL * self.area * self.lift_coeff_max))
-        self.velocity = np.linspace(self.stall_velocity, self.max_velocity, 100)
+        #self.stall_velocity = np.sqrt((2 * self.weight) / (self.density_SL * self.area * self.lift_coeff_max))
+        #self.velocity = np.linspace(self.stall_velocity, self.max_velocity, 100)
 
-        self.velocity = np.array([self.velocity * np.sqrt(sigma) for sigma in self.sigmas])
+        #self.velocity = np.array([self.velocity * np.sqrt(sigma) for sigma in self.sigmas])
+        
+        self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
 
         # finding drag
         self.drag_coeff = np.array([self.drag_coeff_0 + np.power(cl, 2) / (np.pi * self.aspect_ratio * self.oswald_eff) for cl in self.lift_coeff])
@@ -72,7 +76,7 @@ class climb_analysis:
             plt.figure(dpi=230, figsize=(7,4))
             plt.style.use(['science', 'no-latex'])
 
-            self.climb_rate_max_interp = interpolate.UnivariateSpline(np.flip(self.climb_rate_max_x), np.flip(self.climb_rate_max))
+            self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x, self.climb_rate_max)
             self.interp_x = np.linspace(np.min(self.climb_rate_max_x), np.max(self.climb_rate_max_x))
 
             plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')          
@@ -95,7 +99,7 @@ class climb_analysis:
             plt.figure(dpi=230, figsize=(7,4))
             plt.style.use(['science', 'no-latex'])
 
-            self.climb_rate_max_interp = interpolate.UnivariateSpline(np.flip(self.climb_rate_max_x*1.94384), np.flip(self.climb_rate_max*1.94384))
+            self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384)
             self.interp_x = np.linspace(np.min(self.climb_rate_max_x*1.94384), np.max(self.climb_rate_max_x*1.94384))
 
             plt.plot(self.interp_x, self.climb_rate_max_interp(self.interp_x), linestyle='--')
