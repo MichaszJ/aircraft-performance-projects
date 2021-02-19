@@ -134,7 +134,7 @@ class climb_analysis:
                     columns = ['Altitude [ft]', 'Equivalent Velocity [kts]', 'Maximum Rate of Climb [kts]']
                 )
 
-            print(self.max_roc_data)
+            return self.max_roc_data
         
     def hodograph(self, metric, mode):
         # find horizontal velocity
@@ -207,32 +207,68 @@ class climb_analysis:
                     columns = cols
                 )
 
-            pd.set_option("display.max_rows", None, "display.max_columns", None)
-            print(self.hodo)
+            return self.hodo
 
-    def ceilings(self, metric):
+    def ceilings(self, metric, mode):
         self.alts = [0]
         self.alts.extend(self.altitudes)
         self.alts = np.array(self.alts)
 
-        if metric:
-            plt.figure(dpi=230, figsize=(7,4))
-            plt.style.use(['science', 'no-latex'])
+        self.service_ceiling = 0.987473 # knots
 
-            plt.scatter(self.alts*0.3048, self.climb_rate_max)
+        if mode == 'plot':
+            if metric:
+                self.ceilings_interp = interpolate.UnivariateSpline(self.alts*0.3048, self.climb_rate_max)
+                self.ceiling = interpolate.UnivariateSpline(np.flip(self.climb_rate_max), np.flip(self.alts*0.3048))
 
-            plt.xlabel('Altitude [m]')
-            plt.ylabel('Maximum Rate of Climb [m/s]')
+                self.ceilings_interp_x = np.linspace(np.min(self.alts*0.3048), self.ceiling(0))
 
-            plt.show()
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
 
-        else:
-            plt.figure(dpi=230, figsize=(7,4))
-            plt.style.use(['science', 'no-latex'])
+                plt.plot(self.ceilings_interp_x, self.ceilings_interp(self.ceilings_interp_x), linestyle='--') 
+                plt.scatter(self.alts*0.3048, self.climb_rate_max)
 
-            plt.scatter(self.alts, np.array(self.climb_rate_max)*1.94384)
+                plt.plot([0, self.ceiling(0.987473 * 0.514444), self.ceiling(0.987473 * 0.514444)], [0.987473 * 0.514444, 0.987473 * 0.514444, 0], linestyle='-.')
 
-            plt.xlabel('Altitude [ft]')
-            plt.ylabel('Maximum Rate of Climb [kts]')
+                plt.xlabel('Altitude [m]')
+                plt.ylabel('Maximum Rate of Climb [m/s]')
 
-            plt.show()
+                plt.show()
+
+                print('Spline coefficients: ', self.ceilings_interp.get_coeffs())
+
+            else:
+                self.ceilings_interp = interpolate.UnivariateSpline(self.alts, self.climb_rate_max*1.94384)
+                self.ceiling = interpolate.UnivariateSpline(np.flip(self.climb_rate_max*1.94384), np.flip(self.alts))
+
+                self.ceilings_interp_x = np.linspace(np.min(self.alts*0.3048), self.ceiling(0))
+
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                plt.plot(self.ceilings_interp_x, self.ceilings_interp(self.ceilings_interp_x), linestyle='--') 
+                plt.scatter(self.alts, np.array(self.climb_rate_max)*1.94384)
+                plt.plot([0, self.ceiling(0.987473), self.ceiling(0.987473)], [0.987473, 0.987473, 0], linestyle='-.')
+
+                plt.xlabel('Altitude [ft]')
+                plt.ylabel('Maximum Rate of Climb [kts]')
+
+                plt.show()
+
+                print('Spline coefficients: ', self.ceilings_interp.get_coeffs())
+
+        elif mode == 'data':
+            if metric:
+                self.ceilings_data = pd.DataFrame(
+                    data = [self.ceiling(0.987473 * 0.514444), self.ceiling(0)],
+                    index = ['Service Ceiling [m]', 'Absolute Ceiling [m]']
+                )
+
+            else:
+                self.ceilings_data = pd.DataFrame(
+                    data = [self.ceiling(0.987473), self.ceiling(0)],
+                    index = ['Service Ceiling [ft]', 'Absolute Ceiling [ft]']
+                )
+
+            return self.ceilings_data
