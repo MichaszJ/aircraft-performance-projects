@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.interpolate as interpolate
+import scipy.integrate as integrate
 from skaero.atmosphere import coesa
 
 class climb_analysis:
@@ -272,3 +273,52 @@ class climb_analysis:
                 )
 
             return self.ceilings_data
+
+    def time_to_altitude(self, metric, mode):
+        self.alts = [0]
+        self.alts.extend(self.altitudes)
+        self.alts = np.array(self.alts)
+
+        self.climb_rate_max = np.array([np.max(alt) for alt in self.climb_rate])
+        self.inverse_roc = 1 / self.climb_rate_max
+
+        self.inverse_interp = interpolate.UnivariateSpline(self.alts, self.inverse_roc)
+        self.inverse_interp_x = np.linspace(np.min(self.alts), np.max(self.alts))
+
+        self.time_to_alt = np.array([integrate.quad(self.inverse_interp, self.inverse_interp_x[0], x)[0] for x in self.inverse_interp_x])
+
+        if mode == 'plot':
+            if metric:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                plt.plot(self.inverse_interp_x*0.3048, self.time_to_alt)
+
+                plt.xlabel('Altitude [m]')
+                plt.ylabel('Time [s]')
+                plt.show()
+            
+            else:
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                plt.plot(self.inverse_interp_x, self.time_to_alt)
+
+                plt.xlabel('Altitude [ft]')
+                plt.ylabel('Time [s]')
+
+                plt.show()
+
+        if mode == 'data':
+            if metric:
+                self.time_to_alt_data = pd.DataFrame(
+                    data = np.array([self.inverse_interp_x*0.3048, self.time_to_alt]).T,
+                    columns = ['Altitude [m]', 'Time [s]']
+                )
+            else:
+                self.time_to_alt_data = pd.DataFrame(
+                    data = np.array([self.inverse_interp_x, self.time_to_alt]).T,
+                    columns = ['Altitude [ft]', 'Time [s]']
+                )
+
+            return self.time_to_alt_data
