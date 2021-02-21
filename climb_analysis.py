@@ -28,15 +28,8 @@ class climb_analysis:
         self.sigmas = np.array([rho / self.density_SL for rho in self.density])
 
         # finding lift and velocity ranges
-        #self.lift_coeff_min = (2 * self.weight) / (self.density_SL * self.area * np.power(self.max_velocity, 2))
-        
         self.lift_coeff_min = 0.2
         self.lift_coeff = np.linspace(self.lift_coeff_min, self.lift_coeff_max, 100)
-
-        #self.stall_velocity = np.sqrt((2 * self.weight) / (self.density_SL * self.area * self.lift_coeff_max))
-        #self.velocity = np.linspace(self.stall_velocity, self.max_velocity, 100)
-
-        #self.velocity = np.array([self.velocity * np.sqrt(sigma) for sigma in self.sigmas])
         
         self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
 
@@ -322,3 +315,66 @@ class climb_analysis:
                 )
 
             return self.time_to_alt_data
+
+    def steepest_climb_rate(self, metric, mode):
+        self.alts = [0]
+        self.alts.extend(self.altitudes)
+        self.alts = np.array(self.alts)
+
+        # find max gamma
+        self.safety_len = len([cl for cl in self.lift_coeff if cl <= np.max(self.lift_coeff)/1.1])
+        
+        self.gamma = self.climb_rate[..., :self.safety_len] / self.velocity[..., :self.safety_len]
+
+        self.gamma_max_index = [np.argmax(alt) for alt in self.gamma]
+        self.climb_rate_steep = np.array([self.climb_rate[i][j] for i, j in enumerate(self.gamma_max_index)])
+
+        if mode == 'plot':
+            if metric:
+                self.gamma_interp = interpolate.UnivariateSpline(self.alts*0.3048, self.climb_rate_steep)
+                self.gamma_interp_x = np.linspace(np.min(self.alts*0.3048), np.max(self.alts*0.3048))
+
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                plt.scatter(self.alts*0.3048, self.climb_rate_steep)
+                plt.plot(self.gamma_interp_x, self.gamma_interp(self.gamma_interp_x), linestyle='--')
+
+                plt.xlabel('Altitude [m]')
+                plt.ylabel('Steepest Climb Rate [m/s]')
+
+                plt.show()
+
+                print('Spline coefficients: ', self.gamma_interp.get_coeffs())
+
+            else:
+                self.gamma_interp = interpolate.UnivariateSpline(self.alts, self.climb_rate_steep*1.94384)
+                self.gamma_interp_x = np.linspace(np.min(self.alts), np.max(self.alts))
+
+                plt.figure(dpi=230, figsize=(7,4))
+                plt.style.use(['science', 'no-latex'])
+
+                plt.scatter(self.alts, self.climb_rate_steep*1.94384)
+                plt.plot(self.gamma_interp_x, self.gamma_interp(self.gamma_interp_x), linestyle='--')
+
+                plt.xlabel('Altitude [ft]')
+                plt.ylabel('Steepest Climb Rate [kts]')
+
+                plt.show()
+
+                print('Spline coefficients: ', self.gamma_interp.get_coeffs())
+
+        elif mode == 'data':
+            if metric:
+                self.gamma_max_data = pd.DataFrame(
+                    data = np.array([self.alts*0.3048, self.climb_rate_steep]).T,
+                    columns = ['Altitude [m]', 'Steepest Climb Rate [m/s]']
+                )
+            
+            else:
+                self.gamma_max_data = pd.DataFrame(
+                    data = np.array([self.alts, self.climb_rate_steep*1.94384]).T,
+                    columns = ['Altitude [ft]', 'Steepest Climb Rate [kts]']
+                )
+
+            return self.gamma_max_data
