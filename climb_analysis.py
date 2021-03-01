@@ -4,11 +4,20 @@ import pandas as pd
 import scipy.interpolate as interpolate
 import scipy.integrate as integrate
 from skaero.atmosphere import coesa
+from cycler import cycler
 
 class climb_analysis:
-    def __init__(self, altitudes):
+    def __init__(self, altitudes, plot_style=None, fig_size=None):
+        # matplotlib.pyplot formatting
+        self.plot_style = plot_style
+        self.fig_size = fig_size
+
         # initial properties
         self.altitudes = altitudes
+        self.alts = [0]
+        self.alts.extend(self.altitudes)
+        self.alts = np.array(self.alts)
+
         self.weight = 2400 * 4.44822
         self.drag_coeff_0 = 0.0317
         self.aspect_ratio = 5.71
@@ -21,10 +30,11 @@ class climb_analysis:
         self.density_SL = 1.225
         self.area = 170 * 0.092903
 
+        # densities and density ratios
         self.density = [self.density_SL]
         self.density.extend([coesa.table(alt * 0.3048)[3] for alt in self.altitudes])
-
         self.density = np.array(self.density)
+
         self.sigmas = np.array([rho / self.density_SL for rho in self.density])
 
         # finding lift and velocity ranges
@@ -33,9 +43,10 @@ class climb_analysis:
         
         self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
 
-        # finding drag
+        # finding drag coefficient using drag polar
         self.drag_coeff = np.array([self.drag_coeff_0 + np.power(cl, 2) / (np.pi * self.aspect_ratio * self.oswald_eff) for cl in self.lift_coeff])
 
+        # finding drag using drag coefficient
         self.drag = np.array([
             [0.5 * rho * np.power(self.velocity[i][j], 2) * self.area * self.drag_coeff[j] for j in range(len(self.velocity[i]))] for i, rho in enumerate(self.density)
         ])
@@ -43,9 +54,12 @@ class climb_analysis:
         # finding power required
         self.power_required = self.drag * self.velocity
         
-        # finding propeller efficiency
+        # finding propeller efficiency through interpolation
+        # values in self.adv_ratio were measured from given figure
         self.adv_ratio = np.linspace(0.25, 0.95, 15)
         self.prop_eff = np.array([0.45, 0.53, 0.58, 0.63, 0.67, 0.70, 0.73, 0.76, 0.78, 0.80, 0.81, 0.81, 0.80, 0.76, 0.69])
+        
+        # creating scipy interpolation object
         self.prop_eff_interp_4 = interpolate.UnivariateSpline(self.adv_ratio, self.prop_eff, k=4)
 
         # finding power available
@@ -66,10 +80,17 @@ class climb_analysis:
         self.climb_rate_max_x = np.array([self.velocity[i][np.argmax(self.climb_rate[i])] for i in range(len(self.velocity))])
 
         if mode == 'plot':
-            if metric:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
 
+            # formatting plots
+            if self.plot_style is not None:
+                plt.style.use(self.plot_style)
+
+            if self.fig_size is not None:
+                plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
+
+            if metric:
+                
+                # creating and plotting curve fit
                 self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x, self.climb_rate_max)
                 self.interp_x = np.linspace(np.min(self.climb_rate_max_x), np.max(self.climb_rate_max_x))
 
@@ -81,6 +102,7 @@ class climb_analysis:
                     else:
                         plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='{0} ft'.format(self.altitudes[i-1]))
 
+                plt.text(np.mean(self.interp_x), self.climb_rate_max_interp(np.mean(self.interp_x)), spline_string)
                 plt.xlabel('Equivalent Velocity [m/s]')
                 plt.ylabel('Maximum Rate of Climb [m/s]')
                 plt.legend()
@@ -90,9 +112,6 @@ class climb_analysis:
                 print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
 
             else:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
-
                 self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384)
                 self.interp_x = np.linspace(np.min(self.climb_rate_max_x*1.94384), np.max(self.climb_rate_max_x*1.94384))
 
@@ -113,10 +132,6 @@ class climb_analysis:
                 print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
 
         elif mode == 'data':
-            self.alts = [0]
-            self.alts.extend(self.altitudes)
-            self.alts = np.array(self.alts)
-
             if metric:
                 self.max_roc_data = pd.DataFrame(
                     data = np.array([self.alts*0.3048, self.climb_rate_max_x, self.climb_rate_max]).T,
@@ -140,9 +155,16 @@ class climb_analysis:
         self.velocity_hor_pos = [self.velocity_hor[i][0:len(self.climb_rate_pos[i])] for i in range(len(self.climb_rate_pos))]
 
         if mode == 'plot':
+            if self.plot_style is not None:
+                plt.style.use(self.plot_style)
+
+            if self.fig_size is not None:
+                plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
+
+
             if metric:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
+                default_cycler = (cycler(color='bgrc') + cycler(linestyle=['-', '--', ':', '-.']))
+                plt.rc('axes', prop_cycle=default_cycler)
 
                 for i in range(len(self.altitudes) + 1):
                     if i == 0:
@@ -157,8 +179,8 @@ class climb_analysis:
                 plt.show()
 
             else:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
+                default_cycler = (cycler(color='bgrc') + cycler(linestyle=['-', '--', ':', '-.']))
+                plt.rc('axes', prop_cycle=default_cycler)
 
                 for i in range(len(self.altitudes) + 1):
                     if i == 0:
@@ -173,10 +195,6 @@ class climb_analysis:
                 plt.show()
         
         elif mode == 'data':
-            self.alts = [0]
-            self.alts.extend(self.altitudes)
-            self.alts = np.array(self.alts)
-
             if metric:
                 cols = ['True Velocity [kts]']
                 cols.extend(['{0} [m]'.format(alt*0.3048) for alt in self.alts])
@@ -204,21 +222,20 @@ class climb_analysis:
             return self.hodo
 
     def ceilings(self, metric, mode):
-        self.alts = [0]
-        self.alts.extend(self.altitudes)
-        self.alts = np.array(self.alts)
-
         self.service_ceiling = 0.987473 # knots
 
         if mode == 'plot':
+            if self.plot_style is not None:
+                plt.style.use(self.plot_style)
+
+            if self.fig_size is not None:
+                plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
+
             if metric:
                 self.ceilings_interp = interpolate.UnivariateSpline(self.alts*0.3048, self.climb_rate_max)
                 self.ceiling = interpolate.UnivariateSpline(np.flip(self.climb_rate_max), np.flip(self.alts*0.3048))
 
                 self.ceilings_interp_x = np.linspace(np.min(self.alts*0.3048), self.ceiling(0))
-
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
 
                 plt.plot(self.ceilings_interp_x, self.ceilings_interp(self.ceilings_interp_x), linestyle='--') 
                 plt.scatter(self.alts*0.3048, self.climb_rate_max)
@@ -237,9 +254,6 @@ class climb_analysis:
                 self.ceiling = interpolate.UnivariateSpline(np.flip(self.climb_rate_max*1.94384), np.flip(self.alts))
 
                 self.ceilings_interp_x = np.linspace(np.min(self.alts*0.3048), self.ceiling(0))
-
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
 
                 plt.plot(self.ceilings_interp_x, self.ceilings_interp(self.ceilings_interp_x), linestyle='--') 
                 plt.scatter(self.alts, np.array(self.climb_rate_max)*1.94384)
@@ -268,10 +282,6 @@ class climb_analysis:
             return self.ceilings_data
 
     def time_to_altitude(self, metric, mode):
-        self.alts = [0]
-        self.alts.extend(self.altitudes)
-        self.alts = np.array(self.alts)
-
         self.climb_rate_max = np.array([np.max(alt) for alt in self.climb_rate])
         self.inverse_roc = 1 / self.climb_rate_max
 
@@ -281,10 +291,13 @@ class climb_analysis:
         self.time_to_alt = np.array([integrate.quad(self.inverse_interp, self.inverse_interp_x[0], x)[0] for x in self.inverse_interp_x])
 
         if mode == 'plot':
-            if metric:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
+            if self.plot_style is not None:
+                plt.style.use(self.plot_style)
 
+            if self.fig_size is not None:
+                plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
+            
+            if metric:
                 plt.plot(self.inverse_interp_x*0.3048, self.time_to_alt)
 
                 plt.xlabel('Altitude [m]')
@@ -292,9 +305,6 @@ class climb_analysis:
                 plt.show()
             
             else:
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
-
                 plt.plot(self.inverse_interp_x, self.time_to_alt)
 
                 plt.xlabel('Altitude [ft]')
@@ -317,10 +327,6 @@ class climb_analysis:
             return self.time_to_alt_data
 
     def steepest_climb_rate(self, metric, mode):
-        self.alts = [0]
-        self.alts.extend(self.altitudes)
-        self.alts = np.array(self.alts)
-
         # find max gamma
         self.safety_len = len([cl for cl in self.lift_coeff if cl <= np.max(self.lift_coeff)/1.1])
         
@@ -330,12 +336,15 @@ class climb_analysis:
         self.climb_rate_steep = np.array([self.climb_rate[i][j] for i, j in enumerate(self.gamma_max_index)])
 
         if mode == 'plot':
+            if self.plot_style is not None:
+                plt.style.use(self.plot_style)
+
+            if self.fig_size is not None:
+                plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
+
             if metric:
                 self.gamma_interp = interpolate.UnivariateSpline(self.alts*0.3048, self.climb_rate_steep)
                 self.gamma_interp_x = np.linspace(np.min(self.alts*0.3048), np.max(self.alts*0.3048))
-
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
 
                 plt.scatter(self.alts*0.3048, self.climb_rate_steep)
                 plt.plot(self.gamma_interp_x, self.gamma_interp(self.gamma_interp_x), linestyle='--')
@@ -350,9 +359,6 @@ class climb_analysis:
             else:
                 self.gamma_interp = interpolate.UnivariateSpline(self.alts, self.climb_rate_steep*1.94384)
                 self.gamma_interp_x = np.linspace(np.min(self.alts), np.max(self.alts))
-
-                plt.figure(dpi=230, figsize=(7,4))
-                plt.style.use(['science', 'no-latex'])
 
                 plt.scatter(self.alts, self.climb_rate_steep*1.94384)
                 plt.plot(self.gamma_interp_x, self.gamma_interp(self.gamma_interp_x), linestyle='--')
