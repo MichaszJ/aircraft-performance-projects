@@ -102,7 +102,6 @@ class climb_analysis:
                     else:
                         plt.scatter(self.climb_rate_max_x[i], self.climb_rate_max[i], label='{0} ft'.format(self.altitudes[i-1]))
 
-                plt.text(np.mean(self.interp_x), self.climb_rate_max_interp(np.mean(self.interp_x)), spline_string)
                 plt.xlabel('Equivalent Velocity [m/s]')
                 plt.ylabel('Maximum Rate of Climb [m/s]')
                 plt.legend()
