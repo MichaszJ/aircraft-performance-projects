@@ -41,15 +41,14 @@ class climb_analysis:
         self.lift_coeff_min = 0.2
         self.lift_coeff = np.linspace(self.lift_coeff_min, self.lift_coeff_max, 100)
         
-        self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
+        #self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
+        self.velocity = np.sqrt((2 * self.weight) / (self.density[:, None] * self.area * self.lift_coeff))
 
         # finding drag coefficient using drag polar
-        self.drag_coeff = np.array([self.drag_coeff_0 + np.power(cl, 2) / (np.pi * self.aspect_ratio * self.oswald_eff) for cl in self.lift_coeff])
+        self.drag_coeff = self.drag_coeff_0 + np.power(self.lift_coeff, 2) / (np.pi * self.aspect_ratio * self.oswald_eff)
 
         # finding drag using drag coefficient
-        self.drag = np.array([
-            [0.5 * rho * np.power(self.velocity[i][j], 2) * self.area * self.drag_coeff[j] for j in range(len(self.velocity[i]))] for i, rho in enumerate(self.density)
-        ])
+        self.drag = 0.5 * self.density[:, None] * np.power(self.velocity, 2) * self.area * self.drag_coeff
 
         # finding power required
         self.power_required = self.drag * self.velocity
@@ -61,15 +60,15 @@ class climb_analysis:
         
         # creating scipy interpolation object
         self.prop_eff_interp_4 = interpolate.UnivariateSpline(self.adv_ratio, self.prop_eff, k=4)
+        
 
         # finding power available
         self.prop_rot = 2700 * 0.016667
         self.prop_diameter = 73 * 0.0254
         self.advance_ratios = self.velocity / (self.prop_rot * self.prop_diameter)
+        self.prop_eff = self.prop_eff_interp_4(self.advance_ratios)
 
-        self.power_available = np.array([
-            [self.prop_eff_interp_4(j) * (self.brake_hp * 745.7) * np.power(self.sigmas[i], 0.7) for j in self.advance_ratios[i]] for i in range(len(self.sigmas))
-        ])
+        self.power_available = self.prop_eff * (self.brake_hp * 745.7) * np.power(self.sigmas[:, None], 0.7)
 
         # find rate of climb
         self.climb_rate = (self.power_available - self.power_required) / self.weight
