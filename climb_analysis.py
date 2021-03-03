@@ -61,7 +61,6 @@ class climb_analysis:
         # creating scipy interpolation object
         self.prop_eff_interp_4 = interpolate.UnivariateSpline(self.adv_ratio, self.prop_eff, k=4)
         
-
         # finding power available
         self.prop_rot = 2700 * 0.016667
         self.prop_diameter = 73 * 0.0254
@@ -72,6 +71,10 @@ class climb_analysis:
 
         # find rate of climb
         self.climb_rate = (self.power_available - self.power_required) / self.weight
+
+        # find horizontal velocity
+        self.gamma = self.climb_rate / self.velocity
+        self.velocity_hor = self.velocity * np.cos(self.gamma)
 
     def max_roc(self, metric, mode):
         # find maximum rate of climb
@@ -144,10 +147,6 @@ class climb_analysis:
             return self.max_roc_data
         
     def hodograph(self, metric, mode):
-        # find horizontal velocity
-        self.gamma = self.climb_rate / self.velocity
-        self.velocity_hor = self.velocity * np.cos(self.gamma)
-
         # get only positive rate of climb Values
         self.climb_rate_pos = [[climb_rate for climb_rate in alt if climb_rate > 0] for alt in self.climb_rate]
         self.velocity_hor_pos = [self.velocity_hor[i][0:len(self.climb_rate_pos[i])] for i in range(len(self.climb_rate_pos))]
@@ -220,7 +219,7 @@ class climb_analysis:
             return self.hodo
 
     def ceilings(self, metric, mode):
-        self.service_ceiling = 0.987473 # knots
+        self.service_ceiling = 0.987473 # =100 ft / min
 
         if mode == 'plot':
             if self.plot_style is not None:
