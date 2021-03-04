@@ -41,7 +41,6 @@ class climb_analysis:
         self.lift_coeff_min = 0.2
         self.lift_coeff = np.linspace(self.lift_coeff_min, self.lift_coeff_max, 100)
         
-        #self.velocity = np.array([np.sqrt((2 * self.weight) / (rho * self.area * self.lift_coeff)) for rho in self.density])
         self.velocity = np.sqrt((2 * self.weight) / (self.density[:, None] * self.area * self.lift_coeff))
 
         # finding drag coefficient using drag polar
@@ -77,12 +76,11 @@ class climb_analysis:
         self.velocity_hor = self.velocity * np.cos(self.gamma)
 
     def max_roc(self, metric, mode):
-        # find maximum rate of climb
+        # find maximum rate of climb and respective indexes
         self.climb_rate_max = np.array([np.max(alt) for alt in self.climb_rate])
         self.climb_rate_max_x = np.array([self.velocity[i][np.argmax(self.climb_rate[i])] for i in range(len(self.velocity))])
 
         if mode == 'plot':
-
             # formatting plots
             if self.plot_style is not None:
                 plt.style.use(self.plot_style)
@@ -91,7 +89,6 @@ class climb_analysis:
                 plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
 
             if metric:
-                
                 # creating and plotting curve fit
                 self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x, self.climb_rate_max)
                 self.interp_x = np.linspace(np.min(self.climb_rate_max_x), np.max(self.climb_rate_max_x))
@@ -113,6 +110,7 @@ class climb_analysis:
                 print('Spline coefficients: ', self.climb_rate_max_interp.get_coeffs())
 
             else:
+                # creating and plotting curve fit
                 self.climb_rate_max_interp = interpolate.UnivariateSpline(self.climb_rate_max_x*1.94384, self.climb_rate_max*1.94384)
                 self.interp_x = np.linspace(np.min(self.climb_rate_max_x*1.94384), np.max(self.climb_rate_max_x*1.94384))
 
@@ -147,7 +145,7 @@ class climb_analysis:
             return self.max_roc_data
         
     def hodograph(self, metric, mode):
-        # get only positive rate of climb Values
+        # get only positive rate of climb values and respective indexes
         self.climb_rate_pos = [[climb_rate for climb_rate in alt if climb_rate > 0] for alt in self.climb_rate]
         self.velocity_hor_pos = [self.velocity_hor[i][0:len(self.climb_rate_pos[i])] for i in range(len(self.climb_rate_pos))]
 
@@ -158,11 +156,11 @@ class climb_analysis:
             if self.fig_size is not None:
                 plt.figure(dpi=self.fig_size[0], figsize=self.fig_size[1])
 
+            # cycling through line styles so each line is easily distinguishable
+            default_cycler = (cycler(color='bgrc') + cycler(linestyle=['-', '--', ':', '-.']))
+            plt.rc('axes', prop_cycle=default_cycler)
 
             if metric:
-                default_cycler = (cycler(color='bgrc') + cycler(linestyle=['-', '--', ':', '-.']))
-                plt.rc('axes', prop_cycle=default_cycler)
-
                 for i in range(len(self.altitudes) + 1):
                     if i == 0:
                         plt.plot(self.velocity_hor_pos[i], self.climb_rate_pos[i], label='Sea Level')
@@ -176,9 +174,6 @@ class climb_analysis:
                 plt.show()
 
             else:
-                default_cycler = (cycler(color='bgrc') + cycler(linestyle=['-', '--', ':', '-.']))
-                plt.rc('axes', prop_cycle=default_cycler)
-
                 for i in range(len(self.altitudes) + 1):
                     if i == 0:
                         plt.plot(np.array(self.velocity_hor_pos[i])*1.94384, np.array(self.climb_rate_pos[i])*1.94384, label='Sea Level')
@@ -219,7 +214,8 @@ class climb_analysis:
             return self.hodo
 
     def ceilings(self, metric, mode):
-        self.service_ceiling = 0.987473 # =100 ft / min
+        # service ceiling defined where v = 100 ft / min = 0.987 knots
+        self.service_ceiling = 0.987473
 
         if mode == 'plot':
             if self.plot_style is not None:
@@ -324,11 +320,12 @@ class climb_analysis:
             return self.time_to_alt_data
 
     def steepest_climb_rate(self, metric, mode):
-        # find max gamma
+        # finding range of C_L within safety margins
         self.safety_len = len([cl for cl in self.lift_coeff if cl <= np.max(self.lift_coeff)/1.1])
         
         self.gamma = self.climb_rate[..., :self.safety_len] / self.velocity[..., :self.safety_len]
 
+        # finding maximumm flight path angles
         self.gamma_max_index = [np.argmax(alt) for alt in self.gamma]
         self.climb_rate_steep = np.array([self.climb_rate[i][j] for i, j in enumerate(self.gamma_max_index)])
 
