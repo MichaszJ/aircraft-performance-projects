@@ -77,10 +77,10 @@ class ground_roll:
         current_velocity = 0
         current_distance = 0
 
-        self.gr_distance = [current_acceleration]
-        self.gr_velocity = [current_velocity]
-        self.gr_acceleration = [current_distance]
-        self.time = [0]
+        gr_distance = [current_acceleration]
+        gr_velocity = [current_velocity]
+        gr_acceleration = [current_distance]
+        time = [0]
 
         # ground roll
         while current_velocity < self.transition_velocity:
@@ -94,14 +94,14 @@ class ground_roll:
 
             i += 1
 
-            self.gr_acceleration.append(current_acceleration)
-            self.gr_velocity.append(current_velocity)
-            self.gr_distance.append(current_distance)
-            self.time.append(dt*i)
+            gr_acceleration.append(current_acceleration)
+            gr_velocity.append(current_velocity)
+            gr_distance.append(current_distance)
+            time.append(dt*i)
 
         #self.acceleration = np.array(self.acceleration)
-        self.gr_velocity = np.array(self.gr_velocity)
-        self.gr_distance = np.array(self.gr_distance)
+        gr_velocity = np.array(gr_velocity)
+        gr_distance = np.array(gr_distance)
         #self.time = np.array(self.time)
 
         plt.style.use(['science', 'no-latex'])
@@ -110,11 +110,11 @@ class ground_roll:
         fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
         ax1.set_xlabel('Time [s]')
         ax1.set_ylabel('Distance [ft]')
-        line1 = ax1.plot(self.time, self.gr_distance*3.28084, label='Distance')
+        line1 = ax1.plot(time, gr_distance*3.28084, label='Distance')
 
         ax2 = ax1.twinx()
         ax2.set_ylabel('Velocity [kts]')
-        line2 = ax2.plot(self.time, self.gr_velocity*1.94384, linestyle='--', label='Velocity')
+        line2 = ax2.plot(time, gr_velocity*1.94384, linestyle='--', label='Velocity')
 
         # https://stackoverflow.com/questions/5484922/secondary-axis-with-twinx-how-to-add-to-legend
         lines = line1 + line2
@@ -133,10 +133,10 @@ class ground_roll:
         current_v_velocity = 0
         current_altitude = 0
 
-        self.tr_altitude = [current_altitude]
-        self.tr_velocity = [current_velocity]
+        tr_altitude = [current_altitude]
+        tr_velocity = [current_velocity]
         #self.tr_acceleration = [current_acceleration]
-        self.tr_distance = [current_distance]
+        tr_distance = [current_distance]
 
         while current_altitude*3.28084 < 35:
             next_gamma = current_gamma + self.d_gamma*dt
@@ -158,27 +158,140 @@ class ground_roll:
             current_v_acceleration = next_v_acceleration
 
             #self.tr_acceleration.append(current_acceleration)
-            self.tr_velocity.append(current_velocity)
-            self.tr_distance.append(current_distance)
-            self.tr_altitude.append(current_altitude)
+            tr_velocity.append(current_velocity)
+            tr_distance.append(current_distance)
+            tr_altitude.append(current_altitude)
             
             i += 1
-            self.time.append(dt*i)
+            time.append(dt*i)
 
-        self.tr_distance = np.array(self.tr_distance)
-        self.tr_altitude = np.array(self.tr_altitude)
-        self.tr_velocity = np.array(self.tr_velocity)
+        tr_distance = np.array(tr_distance)
+        tr_altitude = np.array(tr_altitude)
+        tr_velocity = np.array(tr_velocity)
 
         plt.style.use(['science', 'no-latex'])
 
         fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
         ax1.set_xlabel('Ground Distance [ft]')
         ax1.set_ylabel('Altitude [ft]')
-        line1 = ax1.plot(self.tr_distance*3.28084, self.tr_altitude*3.28084, label='Altitude')
+        line1 = ax1.plot(tr_distance*3.28084, tr_altitude*3.28084, label='Altitude')
 
         ax2 = ax1.twinx()
         ax2.set_ylabel('Velocity [kts]')
-        line2 = ax2.plot(self.tr_distance*3.28084, self.tr_velocity*1.94384, linestyle='--', label='Velocity')
+        line2 = ax2.plot(tr_distance*3.28084, tr_velocity*1.94384, linestyle='--', label='Velocity')
+
+        lines = line1 + line2
+        labs = [line.get_label() for line in lines]
+        ax1.legend(lines, labs, loc=0)
+
+        fig.tight_layout()
+        plt.show()
+
+    def wind(self, mode='metric'):
+        # numerical integration        
+        dt = 0.1
+        i = 0
+
+        current_acceleration = self.ground_acceleration(0)
+        current_velocity = 15*1.94384 # headwind
+        current_distance = 0
+
+        gr_distance = [current_acceleration]
+        gr_velocity = [current_velocity]
+        gr_acceleration = [current_distance]
+        time = [0]
+
+        # ground roll
+        while current_velocity < self.transition_velocity:
+            next_velocity = current_velocity + current_acceleration*dt
+            next_distance = current_distance + (current_velocity)*dt + 0.5*current_acceleration*np.power(dt,2)
+            next_acceleration = self.ground_acceleration(next_velocity)
+
+            current_acceleration = next_acceleration
+            current_velocity = next_velocity
+            current_distance = next_distance
+
+            i += 1
+
+            gr_acceleration.append(current_acceleration)
+            gr_velocity.append(current_velocity)
+            gr_distance.append(current_distance)
+            time.append(dt*i)
+
+        gr_velocity = np.array(gr_velocity)
+        gr_distance = np.array(gr_distance)
+
+        plt.style.use(['science', 'no-latex'])
+
+        fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
+        ax1.set_xlabel('Time [s]')
+        ax1.set_ylabel('Distance [ft]')
+        line1 = ax1.plot(time, gr_distance*3.28084, label='Distance')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Velocity [kts]')
+        line2 = ax2.plot(time, gr_velocity*1.94384, linestyle='--', label='Velocity')
+
+        lines = line1 + line2
+        labs = [line.get_label() for line in lines]
+        ax1.legend(lines, labs, loc=0)
+
+        fig.tight_layout()
+        plt.show()
+
+        # transition
+        current_gamma = 0
+        current_acceleration = self.transition_acceleration(self.thrust(current_velocity), self.drag(current_velocity, current_gamma), current_gamma)
+        
+        # vertical components
+        current_v_acceleration = current_velocity*((self.thrust(current_velocity) - self.drag(current_velocity, current_gamma))/self.takeoff_weight - current_acceleration/9.81)
+        current_v_velocity = 0
+        current_altitude = 0
+
+        tr_altitude = [current_altitude]
+        tr_velocity = [current_velocity]
+        tr_distance = [current_distance]
+
+        while current_altitude*3.28084 < 35:
+            next_gamma = current_gamma + self.d_gamma*dt
+            next_velocity = current_velocity + current_acceleration*dt
+            next_distance = current_distance + current_velocity*dt + 0.5*current_acceleration*np.power(dt,2)
+            next_acceleration = self.transition_acceleration(self.thrust(next_velocity), self.drag(next_velocity, next_gamma), next_gamma)
+            
+            next_v_velocity = current_v_velocity + current_v_acceleration*dt
+            next_altitude = current_altitude + current_v_velocity*dt + 0.5*current_v_acceleration*np.power(dt,2)
+            next_v_acceleration = current_velocity*((self.thrust(next_velocity) - self.drag(next_velocity, next_gamma))/self.takeoff_weight - next_acceleration/9.81)
+
+            current_gamma = next_gamma
+            current_velocity = next_velocity
+            current_distance = next_distance
+            current_acceleration = next_acceleration
+
+            current_v_velocity = next_v_velocity
+            current_altitude = next_altitude
+            current_v_acceleration = next_v_acceleration
+
+            tr_velocity.append(current_velocity)
+            tr_distance.append(current_distance)
+            tr_altitude.append(current_altitude)
+            
+            i += 1
+            time.append(dt*i)
+
+        tr_distance = np.array(tr_distance)
+        tr_altitude = np.array(tr_altitude)
+        tr_velocity = np.array(tr_velocity)
+
+        plt.style.use(['science', 'no-latex'])
+
+        fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
+        ax1.set_xlabel('Ground Distance [ft]')
+        ax1.set_ylabel('Altitude [ft]')
+        line1 = ax1.plot(tr_distance*3.28084, tr_altitude*3.28084, label='Altitude')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Velocity [kts]')
+        line2 = ax2.plot(tr_distance*3.28084, tr_velocity*1.94384, linestyle='--', label='Velocity')
 
         lines = line1 + line2
         labs = [line.get_label() for line in lines]
