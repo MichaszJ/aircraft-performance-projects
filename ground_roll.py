@@ -268,7 +268,7 @@ class ground_roll:
             next_v_velocity = current_v_velocity + current_v_acceleration*dt
             next_altitude = current_altitude + current_v_velocity*dt + 0.5*current_v_acceleration*np.power(dt,2)
             next_v_acceleration = current_velocity*((self.thrust(next_velocity) - self.drag(next_velocity, next_gamma))/self.takeoff_weight - next_acceleration/9.81)
-
+            
             current_gamma = next_gamma
             current_velocity = next_velocity
             current_distance = next_distance
@@ -284,6 +284,8 @@ class ground_roll:
             
             i += 1
             time.append(dt*i)
+            
+           
 
         self.tr_distance_wind = np.array(self.tr_distance_wind)
         tr_altitude = np.array(tr_altitude)
@@ -310,11 +312,17 @@ class ground_roll:
     def analytical_approx(self):
         # no wind
         force_o = self.thrust(0) - self.ground_cf * self.takeoff_weight
-        force_lof = self.thrust(self.transition_velocity) - self.drag(self.transition_velocity, 0) - self.ground_cf * (self.takeoff_weight - 0.5 * 1.225 * np.power(self.transition_velocity, 2) * self.wing_area * self.ground_cl)
 
-        ground_distance = (self.takeoff_weight / 2*9.81) * (np.power(self.transition_velocity, 2))/(force_o - force_lof) * np.log((force_o / force_lof))
+        drag = 0.5 * 1.225 * np.power(self.transition_velocity, 2) * self.wing_area * self.ground_cd
+        lift = 0.5 * 1.225 * np.power(self.transition_velocity, 2) * self.wing_area * self.ground_cl
 
-        print(ground_distance)
+        thrust = self.thrust(self.transition_velocity)
+
+        force_lof = thrust - drag - self.ground_cf * (self.takeoff_weight - lift)
+
+        ground_distance = (self.takeoff_weight / (2*9.81)) * (np.power(self.transition_velocity, 2))/(force_o - force_lof) * np.log((force_o / force_lof))
+
+        return ground_distance
 
     def engine_loss(self):
         # numerical integration        
