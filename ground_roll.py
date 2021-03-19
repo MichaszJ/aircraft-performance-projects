@@ -343,7 +343,7 @@ class ground_roll:
         current_velocity = 0
         current_distance = 0
 
-        self.gr_distance = [current_distance]
+        self.gr_distance_engine = [current_distance]
         gr_velocity = [current_velocity]
         gr_acceleration = [current_acceleration]
         time = [0]
@@ -366,12 +366,12 @@ class ground_roll:
 
             gr_acceleration.append(current_acceleration)
             gr_velocity.append(current_velocity)
-            self.gr_distance.append(current_distance)
+            self.gr_distance_engine.append(current_distance)
             time.append(dt*i)
 
         #self.acceleration = np.array(self.acceleration)
         gr_velocity = np.array(gr_velocity)
-        self.gr_distance = np.array(self.gr_distance)
+        self.gr_distance_engine = np.array(self.gr_distance_engine)
         #self.time = np.array(self.time)
 
         plt.style.use(['science', 'no-latex'])
@@ -380,7 +380,7 @@ class ground_roll:
         fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
         ax1.set_xlabel('Time [s]')
         ax1.set_ylabel('Distance [ft]')
-        line1 = ax1.plot(time, self.gr_distance*3.28084, label='Distance')
+        line1 = ax1.plot(time, self.gr_distance_engine*3.28084, label='Distance')
 
         ax2 = ax1.twinx()
         ax2.set_ylabel('Velocity [kts]')
@@ -393,3 +393,6 @@ class ground_roll:
 
         fig.tight_layout()
         plt.show()
+
+        print('Final time: ', np.round(time[-1], decimals=2), ' s')
+        print('Final distance: ', np.round(self.gr_distance_engine[-1]*3.28084, decimals=2), ' ft')
