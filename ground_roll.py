@@ -131,6 +131,9 @@ class ground_roll:
         fig.tight_layout()
         plt.show()
 
+        print('Final time: ', np.round(time[-1], decimals=2), ' s')
+        print('Final distance: ', np.round(self.gr_distance[-1]*3.28084, decimals=2), ' ft')
+
         # transition
         current_gamma = 0
         current_acceleration = self.transition_acceleration(self.thrust(current_velocity), self.drag(current_velocity, current_gamma), current_gamma)
@@ -194,13 +197,16 @@ class ground_roll:
         fig.tight_layout()
         plt.show()
 
+        print('Final velocity: ', np.round(tr_velocity[-1]*1.94384, decimals=2), ' kts')
+        print('Final distance: ', np.round(self.tr_distance[-1]*3.28084, decimals=2), ' ft')
+
     def wind(self):
         # numerical integration        
         dt = 0.1
         i = 0
 
         current_acceleration = self.ground_acceleration(0)
-        current_velocity = 15*0.514444 # headwind, 15 kts -> m/s
+        current_velocity = -15*0.514444 # headwind, 15 kts -> m/s
         current_distance = 0
 
         self.gr_distance_wind = [current_distance]
@@ -246,6 +252,9 @@ class ground_roll:
         fig.tight_layout()
         plt.show()
 
+        print('Final time: ', np.round(time[-1], decimals=2), ' s')
+        print('Final distance: ', np.round(self.gr_distance_wind[-1]*3.28084, decimals=2), ' ft')
+
         # transition
         current_gamma = 0
         current_acceleration = self.transition_acceleration(self.thrust(current_velocity), self.drag(current_velocity, current_gamma), current_gamma)
@@ -285,8 +294,6 @@ class ground_roll:
             i += 1
             time.append(dt*i)
             
-           
-
         self.tr_distance_wind = np.array(self.tr_distance_wind)
         tr_altitude = np.array(tr_altitude)
         tr_velocity = np.array(tr_velocity)
@@ -308,6 +315,9 @@ class ground_roll:
 
         fig.tight_layout()
         plt.show()
+
+        print('Final velocity: ', np.round(tr_velocity[-1]*1.94384, decimals=2), ' kts')
+        print('Final distance: ', np.round(self.tr_distance_wind[-1]*3.28084, decimals=2), ' ft')
 
     def analytical_approx(self):
         # no wind
