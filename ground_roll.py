@@ -272,7 +272,7 @@ class ground_roll:
         while current_altitude*3.28084 < 35:
             next_gamma = current_gamma + self.d_gamma*dt
             next_velocity = current_velocity + current_acceleration*dt
-            next_distance = current_distance + current_velocity*dt + 0.5*current_acceleration*np.power(dt,2)
+            next_distance = current_distance + (current_velocity - self.wind_speed)*dt + 0.5*current_acceleration*np.power(dt,2)
             next_acceleration = self.transition_acceleration(self.thrust(next_velocity), self.drag(next_velocity, next_gamma), next_gamma)
             
             next_v_velocity = current_v_velocity + current_v_acceleration*dt
