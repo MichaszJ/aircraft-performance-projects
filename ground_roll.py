@@ -41,6 +41,7 @@ class ground_roll:
         self.cd_ratio = 0.4
         self.transition_velocity = 160 * 0.514444
         self.ground_cf = 0.025
+        self.wind_speed = -15 * 0.514444
 
         self.ground_cd = 0.0989
 
@@ -206,7 +207,7 @@ class ground_roll:
         i = 0
 
         current_acceleration = self.ground_acceleration(0)
-        current_velocity = -15*0.514444 # headwind, 15 kts -> m/s
+        current_velocity = self.wind_speed
         current_distance = 0
 
         self.gr_distance_wind = [current_distance]
@@ -217,7 +218,7 @@ class ground_roll:
         # ground roll
         while current_velocity < self.transition_velocity:
             next_velocity = current_velocity + current_acceleration*dt
-            next_distance = current_distance + (current_velocity)*dt + 0.5*current_acceleration*np.power(dt,2)
+            next_distance = current_distance + (current_velocity - self.wind_speed)*dt + 0.5*current_acceleration*np.power(dt,2)
             next_acceleration = self.ground_acceleration(next_velocity)
 
             current_acceleration = next_acceleration
