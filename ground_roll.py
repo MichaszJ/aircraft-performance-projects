@@ -30,6 +30,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time as t
 
 class ground_roll:
     def __init__(self):
@@ -397,3 +398,81 @@ class ground_roll:
 
         print('Final time: ', np.round(time[-1], decimals=2), ' s')
         print('Final distance: ', np.round(self.gr_distance_engine[-1]*3.28084, decimals=2), ' ft')
+
+    def braking(self):
+        # numerical integration        
+        dt = 0.1
+        i = 0
+
+        current_acceleration = self.ground_acceleration(0)
+        current_velocity = 0
+        current_distance = 0
+
+        distance = [current_distance]
+        velocity = [current_velocity]
+        acceleration = [current_acceleration]
+        time = [0]
+
+        failure = False
+        failure_time = None
+        braking = False
+
+        # ground roll
+        while braking is False or current_velocity > 0:
+            next_velocity = current_velocity + current_acceleration*dt
+            next_distance = current_distance + current_velocity*dt + 0.5*current_acceleration*np.power(dt,2)
+
+            # engine failure, no braking
+            if current_velocity >= 80 * 0.514444 and not braking:
+                next_acceleration = self.ground_acceleration(next_velocity, engine_loss=True)
+                
+                if not failure:
+                    failure = True
+                    failure_time = time[i]
+
+            # braking
+            elif braking:
+                next_acceleration = -5
+
+            # normal operation
+            elif not failure:
+                next_acceleration = self.ground_acceleration(next_velocity)
+
+            if failure_time is not None and time[i] - failure_time >= 3:
+                braking = True
+
+            current_acceleration = next_acceleration
+            current_velocity = next_velocity
+            current_distance = next_distance
+
+            i += 1
+
+            acceleration.append(current_acceleration)
+            velocity.append(current_velocity)
+            distance.append(current_distance)
+            time.append(dt*i)
+
+        #self.acceleration = np.array(self.acceleration)
+        velocity = np.array(velocity)
+        distance = np.array(distance)
+        #self.time = np.array(self.time)
+
+        plt.style.use(['science', 'no-latex'])
+
+        # https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html
+        fig, ax1 = plt.subplots(dpi=230, figsize=(7,5))
+        ax1.set_xlabel('Time [s]')
+        ax1.set_ylabel('Distance [ft]')
+        line1 = ax1.plot(time, distance*3.28084, label='Distance')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Velocity [kts]')
+        line2 = ax2.plot(time, velocity*1.94384, linestyle='--', label='Velocity')
+
+        # https://stackoverflow.com/questions/5484922/secondary-axis-with-twinx-how-to-add-to-legend
+        lines = line1 + line2
+        labs = [line.get_label() for line in lines]
+        ax1.legend(lines, labs, loc=0)
+
+        fig.tight_layout()
+        plt.show()
