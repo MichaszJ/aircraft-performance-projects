@@ -432,7 +432,8 @@ class ground_roll:
 
             # braking
             elif braking:
-                next_acceleration = -5
+                brake_force = -0.23 * self.takeoff_weight
+                next_acceleration = brake_force/(self.takeoff_weight/9.81)
 
             # normal operation
             elif not failure:
@@ -476,3 +477,6 @@ class ground_roll:
 
         fig.tight_layout()
         plt.show()
+
+        print('Final time: ', np.round(time[-1], decimals=2), ' s')
+        print('Final distance: ', np.round(distance[-1]*3.28084, decimals=2), ' ft')
