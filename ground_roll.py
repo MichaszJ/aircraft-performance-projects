@@ -1,33 +1,3 @@
-# Develop a program to predict the ground-roll distance, velocity, and acceleration as a function of time. 
-# Input the parametergiven for a Boeing 767ER and check your results against the appropriate figures that are 
-# provided.Please use a numerical integration in time as discussed in classand tutorials.The airspeed for the 
-# beginning of transition and lift off is 160 kts.
-
-# Based on your model develop the following:
-# i. Ground roll distance and speed with no wind over time in comparison to provided data).
-
-# ii. Speed and altitude versus ground distance during initial climb out until clearing.
-
-# iii. Same as i. and ii., but for 15 kts head wind.
-
-# iv. How do the distances of i. –ii. compare to the results attained using the analytical approximation
-#   shown in class?
-
-# v. Same as i. and ii., but with one engine made inoperable at an airspeed of 80kts. Provide the plot for 
-#   distance and airspeed versus time until it reaches the liftoff speed of 160kts. Assume a 10% larger zero-lift 
-#   drag coefficient due to the additional drag of the inoperable engine and the need to trim the aircraft for 
-#   the asymmetrical thrust condition. Assume zero wind.
-
-# vi. Determine the balanced field length if with one engine made inoperable at an airspeed of 80kts. After engine 
-#   failure, wait for 3 seconds before initiating braking. Plot ground roll distance and speed over time. Assume 
-#   zero wind. The runway is hardtop
-
-# numerical integration
-#   1. Compute a(t=0), V(t=0) = V_wind, S(t=0) = 0
-#   2. Compute V(t + dt), S(t + dt)
-#   3. Use V(t + dt) to compute thrust, dynamic pressure
-#   4. Compute a(t + dt)
-
 import numpy as np
 import matplotlib.pyplot as plt
 import time as t
@@ -47,8 +17,6 @@ class ground_roll:
         self.ground_cd = 0.0989
 
         self.d_gamma = 0.0349066 # rad/s
-
-        #self.velocity = np.linspace(0, self.transition_velocity, num=100)
     
     def thrust(self, velocity, engine_loss=False):
         # returns thrust in N
@@ -137,11 +105,11 @@ class ground_roll:
         print('Final distance: ', np.round(self.gr_distance[-1]*3.28084, decimals=2), ' ft')
 
         # transition
-        current_gamma = 0
-        current_acceleration = self.transition_acceleration(self.thrust(current_velocity), self.drag(current_velocity, current_gamma), current_gamma)
+        self.current_gamma = 0
+        current_acceleration = self.transition_acceleration(self.thrust(current_velocity), self.drag(current_velocity, self.current_gamma), self.current_gamma)
         
         # vertical components
-        current_v_acceleration = current_velocity*((self.thrust(current_velocity) - self.drag(current_velocity, current_gamma))/self.takeoff_weight - current_acceleration/9.81)
+        current_v_acceleration = current_velocity*((self.thrust(current_velocity) - self.drag(current_velocity, self.current_gamma))/self.takeoff_weight - current_acceleration/9.81)
         current_v_velocity = 0
         current_altitude = 0
 
@@ -151,7 +119,7 @@ class ground_roll:
         self.tr_distance = [current_distance]
 
         while current_altitude*3.28084 < 35:
-            next_gamma = current_gamma + self.d_gamma*dt
+            next_gamma = self.current_gamma + self.d_gamma*dt
             next_velocity = current_velocity + current_acceleration*dt
             next_distance = current_distance + current_velocity*dt + 0.5*current_acceleration*np.power(dt,2)
             next_acceleration = self.transition_acceleration(self.thrust(next_velocity), self.drag(next_velocity, next_gamma), next_gamma)
@@ -160,7 +128,7 @@ class ground_roll:
             next_altitude = current_altitude + current_v_velocity*dt + 0.5*current_v_acceleration*np.power(dt,2)
             next_v_acceleration = current_velocity*((self.thrust(next_velocity) - self.drag(next_velocity, next_gamma))/self.takeoff_weight - next_acceleration/9.81)
 
-            current_gamma = next_gamma
+            self.current_gamma = next_gamma
             current_velocity = next_velocity
             current_distance = next_distance
             current_acceleration = next_acceleration
@@ -400,6 +368,11 @@ class ground_roll:
         print('Final distance: ', np.round(self.gr_distance_engine[-1]*3.28084, decimals=2), ' ft')
 
     def braking(self):
+        # balanced field length
+        balanced_fl = (0.863/(1 + 2.3*(self.current_gamma - 0.024))) * ((387000/3084)/(0.0765*32.17*0.694) + 35) * (1/(self.thrust(160 * 0.514444)/387000 - 0.030) + 2.7) + 655
+
+        print('Balanced Field Length', balanced_fl, ' ft')
+
         # numerical integration        
         dt = 0.1
         i = 0
